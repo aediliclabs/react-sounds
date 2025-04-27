@@ -1,0 +1,21 @@
+{
+  "version": "1.0.0",
+  "sounds": {
+    "ui/button_1": {
+      "src": "ui/button_1.a4e351f.mp3",
+      "duration": 0.130612
+    },
+    "notification/error_1": {
+      "src": "notification/error_1.be40409.mp3",
+      "duration": 0.940408
+    },
+    "notification/success_1": {
+      "src": "notification/success_1.f38c2ed.mp3",
+      "duration": 1.227755
+    },
+    "game/coin_1": {
+      "src": "game/coin_1.21575b3.mp3",
+      "duration": 0.914286
+    }
+  }
+}
