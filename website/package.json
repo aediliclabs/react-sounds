@@ -16,7 +16,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.5.2",
-    "react-sounds": "1.0.12",
+    "react-sounds": "1.0.13",
     "tailwind-merge": "^3.2.0"
   },
   "devDependencies": {
