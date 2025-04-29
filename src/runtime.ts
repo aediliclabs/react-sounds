@@ -173,7 +173,13 @@ export async function getLocalSoundPath(name: SoundName): Promise<string | null>
   if (typeof document === "undefined") return null;
 
   try {
-    const response = await fetch(publicPath, { method: "HEAD" });
+    // Add a timeout of 300ms to quickly fall back to CDN if file isn't available
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 300);
+
+    const response = await fetch(publicPath, { method: "HEAD", signal: controller.signal });
+
+    clearTimeout(timeoutId);
     if (response.ok) return publicPath;
   } catch (e) {}
 
