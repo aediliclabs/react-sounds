@@ -53,25 +53,35 @@ async function loadSound(name: SoundName): Promise<Howl> {
     throw new Error(`Sound "${name}" not found in manifest`);
   }
 
-  const localPath = getLocalSoundPath(name);
-  const cdnPath = `${cdnBaseUrl}/${manifest.sounds[name].src}`;
+  const localPath = await getLocalSoundPath(name);
+  if (!localPath) return loadSoundFromCDN(name);
 
-  // Create a Howl that can fallback automatically
-  return new Promise((resolve, reject) => {
-    const paths = localPath ? [localPath, cdnPath] : [cdnPath];
+  return new Promise((resolve) => {
     const howl: Howl = new Howl({
-      src: paths,
+      src: [localPath],
       format: ["mp3"],
       preload: true,
-      html5: true, // Enable streaming for better performance
       onload: () => resolve(howl),
       onloaderror: (_, error) => {
-        // If we have multiple sources, Howler will automatically try the next one
-        // This error will only be called when all sources fail
-        console.warn(`Error loading sound "${name}":`, error);
-        reject(error);
+        console.warn(`Error loading local sound "${name}", falling back to CDN:`, error);
+        loadSoundFromCDN(name).then(resolve);
       },
     });
+  });
+}
+
+/**
+ * Load a sound from the CDN
+ */
+async function loadSoundFromCDN(name: SoundName): Promise<Howl> {
+  const soundInfo = manifest.sounds[name];
+  const soundUrl = `${cdnBaseUrl}/${soundInfo.src}`;
+
+  return new Howl({
+    src: [soundUrl],
+    format: ["mp3"],
+    preload: true,
+    html5: true, // Enable streaming
   });
 }
 
@@ -157,14 +167,17 @@ export function subscribeSoundState(callback: (enabled: boolean) => void): () =>
 /**
  * Get the local path for a sound when using the offline mode
  */
-export function getLocalSoundPath(name: SoundName): string | null {
+export async function getLocalSoundPath(name: SoundName): Promise<string | null> {
   const publicPath = `/sounds/${name}.mp3`;
 
   if (typeof document === "undefined") return null;
 
-  // Return the path directly without checking if it exists
-  // The Howl loader will handle fallback if the file doesn't exist
-  return publicPath;
+  try {
+    const response = await fetch(publicPath, { method: "HEAD" });
+    if (response.ok) return publicPath;
+  } catch (e) {}
+
+  return null;
 }
 
 /**
