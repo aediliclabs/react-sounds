@@ -67,7 +67,7 @@ export function useSound(soundName: SoundName, defaultOptions: SoundOptions = {}
       console.error("Error loading sound:", error);
       throw error;
     }
-  }, []);
+  }, [soundName, setIsPlaying]);
 
   const play = useCallback(
     async (options: SoundOptions = defaultOptions) => {
