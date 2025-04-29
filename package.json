@@ -65,6 +65,8 @@
   },
   "homepage": "https://reactsounds.com",
   "dependencies": {
-    "howler": "^2.2.3"
+    "@types/prismjs": "^1.26.5",
+    "howler": "^2.2.3",
+    "prismjs": "^1.30.0"
   }
 }
