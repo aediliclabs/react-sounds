@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "rm -rf dist/ && npm run sync && vite build",
+    "start": "serve -s dist",
     "sync": "cp ../src/manifest.json ./src/",
     "lint": "eslint .",
     "preview": "vite preview"
@@ -17,6 +18,7 @@
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.5.2",
     "react-sounds": "1.0.14",
+    "serve": "^14.2.1",
     "tailwind-merge": "^3.2.0"
   },
   "devDependencies": {
