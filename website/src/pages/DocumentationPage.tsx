@@ -195,7 +195,6 @@ function SoundPlayer() {
     resume, // Function to resume a paused sound
     isPlaying, // Boolean indicating if sound is currently playing
     isLoaded,  // Boolean indicating if sound has been loaded
-    soundRef   // Reference to the underlying Howl instance
   } = useSound('ui/button_1');
   
   // With default options
@@ -412,7 +411,6 @@ function PlaySounds() {
 //   resume: () => void;
 //   isPlaying: boolean;
 //   isLoaded: boolean;
-//   soundRef: React.MutableRefObject<Howl | null>;
 // }`}
         </CodeBlock>
       </section>

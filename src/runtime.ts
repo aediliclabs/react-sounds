@@ -29,72 +29,128 @@ export function getCDNUrl(): string {
 }
 
 /**
- * Cache of preloaded sounds
+ * Cache of preloaded sound blobs to avoid HTML5 audio pool exhaustion
  */
-const soundCache: Record<string, Promise<Howl>> = {};
+const soundBlobCache: Record<string, Promise<Blob>> = {};
+
+// TODO: turn "subscriptions" into a list of ids for better lock tracking
+export type HowlEntry = { instance: Howl; subscriptions: number };
+
+/**
+ * Cache of created Howl instances (only created when actually played)
+ */
+const howlInstanceCache: Record<string, HowlEntry> = {};
 
 /**
  * Make a sound loader function that first tries local files then falls back to CDN
  */
-export function makeRemoteSound(name: SoundName): () => Promise<Howl> {
-  return () => {
-    if (!soundCache[name]) {
-      soundCache[name] = loadSound(name);
+export function makeRemoteSound(name: SoundName): () => Promise<HowlEntry> {
+  return async () => {
+    // First fetch the blob data if not already in cache
+    if (!soundBlobCache[name]) {
+      soundBlobCache[name] = fetchSoundBlob(name);
     }
-    return soundCache[name];
+
+    // Create or return the Howl instance
+    return createOrGetHowlInstance(name);
   };
 }
 
+export async function claimSound(name: SoundName): Promise<Howl> {
+  const entry = await makeRemoteSound(name)();
+  entry.subscriptions += 1;
+
+  return entry.instance;
+}
+
+export function freeSound(name: SoundName) {
+  const entry = howlInstanceCache[name];
+  if (entry && entry.subscriptions > 0) entry.subscriptions -= 1;
+
+  cleanupUnusedSound(name);
+
+  return null;
+}
+
 /**
- * Try to load a sound from the local filesystem first, then fall back to CDN
+ * Fetches sound data as a blob, from local filesystem or CDN
  */
-async function loadSound(name: SoundName): Promise<Howl> {
+async function fetchSoundBlob(name: SoundName): Promise<Blob> {
   if (!manifest.sounds[name]) {
     throw new Error(`Sound "${name}" not found in manifest`);
   }
 
-  const localPath = await getLocalSoundPath(name);
-  if (!localPath) return loadSoundFromCDN(name);
+  try {
+    // Try to fetch from local first
+    const localPath = await getLocalSoundPath(name);
+    if (localPath) {
+      const response = await fetch(localPath);
+      if (response.ok) return await response.blob();
+    }
+  } catch (error) {
+    console.warn(`Error loading local sound "${name}", falling back to CDN:`, error);
+  }
 
-  return new Promise((resolve) => {
-    const howl: Howl = new Howl({
-      src: [localPath],
-      format: ["mp3"],
-      preload: true,
-      onload: () => resolve(howl),
-      onloaderror: (_, error) => {
-        console.warn(`Error loading local sound "${name}", falling back to CDN:`, error);
-        loadSoundFromCDN(name).then(resolve);
-      },
-    });
-  });
-}
-
-/**
- * Load a sound from the CDN
- */
-async function loadSoundFromCDN(name: SoundName): Promise<Howl> {
+  // Fall back to CDN
   const soundInfo = manifest.sounds[name];
   const soundUrl = `${cdnBaseUrl}/${soundInfo.src}`;
 
-  return new Howl({
-    src: [soundUrl],
-    format: ["mp3"],
-    preload: true,
-    html5: true, // Enable streaming
-  });
+  const response = await fetch(soundUrl);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch sound "${name}" from CDN`);
+  }
+
+  return await response.blob();
 }
 
 /**
- * Preload multiple sounds
+ * Creates a Howl instance from a cached blob or fetches it if needed
  */
-export function preloadSounds(names: SoundName[]): Promise<Howl[]> {
+async function createOrGetHowlInstance(name: SoundName): Promise<HowlEntry> {
+  // Return existing instance if available
+  if (howlInstanceCache[name]) {
+    return howlInstanceCache[name];
+  }
+
+  // Fetch the blob if not already in progress
+  if (!soundBlobCache[name]) {
+    soundBlobCache[name] = fetchSoundBlob(name);
+  }
+
+  // Wait for the blob to be fetched
+  const blob = await soundBlobCache[name];
+
+  // Create object URL from blob
+  const objectUrl = URL.createObjectURL(blob);
+
+  // Create new Howl instance
+  const howl = new Howl({
+    src: [objectUrl],
+    format: ["mp3"],
+    html5: true, // Enable streaming to reduce memory usage
+    onload: () => {
+      // Store object URL reference to revoke later
+      (howl as any)._objectUrl = objectUrl;
+    },
+  });
+
+  // Store in cache
+  howlInstanceCache[name] = { instance: howl, subscriptions: 0 };
+
+  return howlInstanceCache[name];
+}
+
+/**
+ * Preload multiple sounds by fetching their data without creating Howl instances
+ */
+export function preloadSounds(names: SoundName[]): Promise<void[]> {
   return Promise.all(
-    names.map((name) => {
-      if (!soundCache[name]) {
-        soundCache[name] = loadSound(name);
+    names.map(async (name) => {
+      if (!soundBlobCache[name]) {
+        soundBlobCache[name] = fetchSoundBlob(name);
       }
-      return soundCache[name];
+      // Just ensure the blob is fetched but don't create Howl instance yet
+      await soundBlobCache[name];
     })
   );
 }
@@ -105,14 +161,20 @@ export function preloadSounds(names: SoundName[]): Promise<Howl[]> {
 export async function playSound(name: SoundName, options?: SoundOptions): Promise<void> {
   if (!isSoundEnabled()) return;
 
-  const soundPromise = makeRemoteSound(name)();
-  const sound = await soundPromise;
+  const sound = await claimSound(name);
+  let freed = false;
 
   if (options) {
     if (options.volume !== undefined) sound.volume(options.volume);
     if (options.rate !== undefined) sound.rate(options.rate);
     if (options.loop !== undefined) sound.loop(options.loop);
   }
+
+  sound.on("end", () => {
+    if (freed || options?.loop) return;
+    freeSound(name);
+    freed = true;
+  });
 
   sound.play();
 }
@@ -178,12 +240,29 @@ export async function getLocalSoundPath(name: SoundName): Promise<string | null>
     const timeoutId = setTimeout(() => controller.abort(), 300);
 
     const response = await fetch(publicPath, { method: "HEAD", signal: controller.signal });
-
     clearTimeout(timeoutId);
-    if (response.ok) return publicPath;
+
+    if (!response.ok) return null;
+    if (!response.headers.get("content-type")?.toLowerCase().startsWith("audio")) return null;
+
+    return publicPath;
   } catch (e) {}
 
   return null;
+}
+
+/**
+ * Clean up unused Howl instances and blob cache entries
+ * Call this when running into memory constraints
+ */
+export function cleanupUnusedSound(name: string): void {
+  const entry = howlInstanceCache[name];
+  if (!entry || entry.instance.playing() || entry.subscriptions > 0) return;
+
+  const { instance } = entry;
+  if ((instance as any)._objectUrl) URL.revokeObjectURL((instance as any)._objectUrl);
+  instance.unload();
+  delete howlInstanceCache[name];
 }
 
 /**
@@ -191,13 +270,12 @@ export async function getLocalSoundPath(name: SoundName): Promise<string | null>
  */
 export async function unlockAudioContext(): Promise<void> {
   if (typeof window === "undefined" || !Howler.ctx) return;
+  if (Howler.ctx.state !== "suspended") return;
 
-  if (Howler.ctx.state === "suspended") {
-    try {
-      await Howler.ctx.resume();
-    } catch (error) {
-      console.warn("Failed to unlock audio context:", error);
-    }
+  try {
+    await Howler.ctx.resume();
+  } catch (error) {
+    console.warn("Failed to unlock audio context:", error);
   }
 }
 

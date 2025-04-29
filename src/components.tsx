@@ -183,6 +183,11 @@ interface SoundProviderProps {
   initialEnabled?: boolean;
 
   /**
+   * How often to clean up unused sounds (in ms), set to 0 to disable
+   */
+  cleanupInterval?: number;
+
+  /**
    * Children components
    */
   children: ReactNode;

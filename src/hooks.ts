@@ -1,6 +1,6 @@
 import { Howl } from "howler";
-import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { isSoundEnabled, makeRemoteSound, unlockAudioContext } from "./runtime";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
+import { claimSound, freeSound, isSoundEnabled, preloadSounds, unlockAudioContext } from "./runtime";
 import { SoundHookReturn, SoundName, SoundOptions } from "./types";
 
 interface SoundContextType {
@@ -23,10 +23,7 @@ export function setSoundContext(context: SoundContextValue): void {
  * Hook for using a sound in a React component.
  * Will use local bundled sounds if available before falling back to remote.
  */
-export function useSound(
-  soundNameOrLoader: SoundName | (() => Promise<Howl>),
-  defaultOptions: SoundOptions = {}
-): SoundHookReturn {
+export function useSound(soundName: SoundName, defaultOptions: SoundOptions = {}): SoundHookReturn {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const soundRef = useRef<Howl | null>(null);
@@ -36,92 +33,77 @@ export function useSound(
   let enabled = isSoundEnabled();
   try {
     const soundContext = SoundContext ? useContext(SoundContext) : null;
-    if (soundContext) {
-      enabled = soundContext.enabled;
-    }
+    if (soundContext) enabled = soundContext.enabled;
   } catch (e) {}
 
-  // Stabilize the soundLoader reference to prevent unnecessary effect reruns
-  const soundLoader = useMemo(() => {
-    return typeof soundNameOrLoader === "string" ? makeRemoteSound(soundNameOrLoader) : soundNameOrLoader;
-  }, [soundNameOrLoader]);
+  // Lazy loading approach - only load the sound when needed
+  const ensureLoaded = useCallback(async (): Promise<Howl> => {
+    if (soundRef.current) return soundRef.current;
 
-  useEffect(() => {
-    let mounted = true;
+    try {
+      const howl = await claimSound(soundName);
 
-    soundLoader()
-      .then((loadedHowl) => {
-        if (!mounted) return;
+      // Set up event listeners
+      howl.on("end", (id) => {
+        const soundIndex = activeSoundsRef.current.findIndex((sound) => sound.id === id);
+        if (soundIndex >= 0) {
+          const sound = activeSoundsRef.current[soundIndex];
 
-        loadedHowl.on("end", (id) => {
-          if (!mounted) return;
+          if (sound.resolver) sound.resolver(); // Resolve sound (eg. created in play())
+          if (!sound.loop) activeSoundsRef.current.splice(soundIndex, 1);
+        }
 
-          const soundIndex = activeSoundsRef.current.findIndex((sound) => sound.id === id);
-          if (soundIndex >= 0) {
-            const sound = activeSoundsRef.current[soundIndex];
-
-            if (sound.resolver) sound.resolver(); // Resolve sound (eg. created in play())
-            if (!sound.loop) activeSoundsRef.current.splice(soundIndex, 1);
-          }
-
-          // Only update isPlaying state if no active sounds remain
-          if (activeSoundsRef.current.length === 0) setIsPlaying(false);
-        });
-
-        soundRef.current = loadedHowl;
-        setIsLoaded(true);
-      })
-      .catch((error) => {
-        console.error("Error loading sound:", error);
+        // Only update isPlaying state if no active sounds remain
+        if (activeSoundsRef.current.length === 0) {
+          soundRef.current = freeSound(soundName);
+          setIsPlaying(false);
+        }
       });
 
-    return () => {
-      mounted = false;
-
-      // Clean up by stopping all sounds and releasing audio resources
-      if (soundRef.current) {
-        soundRef.current.stop();
-
-        // Resolve any pending promises
-        activeSoundsRef.current.forEach((sound) => {
-          if (sound.resolver) sound.resolver();
-        });
-
-        // Remove all sound ids from active list
-        activeSoundsRef.current = [];
-      }
-    };
-  }, [soundLoader]);
+      soundRef.current = howl;
+      setIsLoaded(true);
+      return howl;
+    } catch (error) {
+      console.error("Error loading sound:", error);
+      throw error;
+    }
+  }, []);
 
   const play = useCallback(
     async (options: SoundOptions = defaultOptions) => {
-      if (!isLoaded || !soundRef.current || !enabled) return;
+      if (!enabled) return;
 
-      // Ensure audio context is unlocked before playing
-      await unlockAudioContext();
+      try {
+        // Ensure audio context is unlocked before playing
+        await unlockAudioContext();
 
-      const howl = soundRef.current;
-      const loop = options.loop !== undefined ? options.loop : false;
+        // Ensure the sound is loaded
+        const howl = await ensureLoaded();
 
-      if (options.volume !== undefined) howl.volume(options.volume);
-      if (options.rate !== undefined) howl.rate(options.rate);
-      howl.loop(loop);
+        const loop = options.loop !== undefined ? options.loop : false;
+        if (options.volume !== undefined) howl.volume(options.volume);
+        if (options.rate !== undefined) howl.rate(options.rate);
+        howl.loop(loop);
 
-      const id = howl.play();
-      setIsPlaying(true);
+        const id = howl.play();
+        setIsPlaying(true);
 
-      if (loop) {
-        // For looped sounds, we just track them but don't resolve
-        activeSoundsRef.current.push({ id, loop });
-        return;
+        if (loop) {
+          // For looped sounds, we just track them but don't resolve
+          activeSoundsRef.current.push({ id, loop });
+          return;
+        }
+
+        // For non-looped sounds, return a promise that resolves when the sound ends
+        return new Promise<void>((resolve) => {
+          activeSoundsRef.current.push({ id, loop, resolver: () => resolve() });
+        });
+      } catch (error) {
+        console.error("Error playing sound:", error);
+        throw error;
       }
-
-      // For non-looped sounds, return a promise that resolves when the sound ends
-      return new Promise<void>((resolve) => {
-        activeSoundsRef.current.push({ id, loop, resolver: () => resolve() });
-      });
     },
-    [isLoaded, defaultOptions, enabled]
+    [defaultOptions, enabled, ensureLoaded]
   );
 
   const stop = useCallback(() => {
@@ -133,6 +115,7 @@ export function useSound(
     });
 
     soundRef.current.stop();
+    soundRef.current = freeSound(soundName);
     activeSoundsRef.current = [];
     setIsPlaying(false);
   }, []);
@@ -156,9 +139,30 @@ export function useSound(
 
   useEffect(() => {
     if (!enabled && isPlaying) pause(); // Pause all sounds when disabled
-  }, [enabled, isPlaying]);
+  }, [enabled, isPlaying, pause]);
 
-  return { play, stop, pause, resume, isPlaying, isLoaded, soundRef };
+  // Cleanup on unmount
+  useEffect(() => {
+    preloadSounds([soundName]).then(() => setIsLoaded(true));
+
+    return () => {
+      setIsLoaded(false);
+      setIsPlaying(false);
+
+      if (!soundRef.current) return;
+      soundRef.current.stop();
+      soundRef.current = freeSound(soundName);
+
+      // Resolve any pending promises
+      activeSoundsRef.current.forEach((sound) => {
+        if (sound.resolver) sound.resolver();
+      });
+
+      activeSoundsRef.current = [];
+    };
+  }, [soundName]);
+
+  return { play, stop, pause, resume, isPlaying, isLoaded };
 }
 
 /**
@@ -169,7 +173,7 @@ export function useSoundOnChange<T>(soundName: SoundName, value: T, options?: So
 
   useEffect(() => {
     play(options).catch((err) => console.error("Failed to play sound:", err));
-  }, [value]);
+  }, [value, play, options]);
 }
 
 /**
