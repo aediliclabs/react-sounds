@@ -14,7 +14,6 @@ const { execSync } = require("child_process");
 const SOUNDS_DIR = path.resolve(__dirname, "../sounds");
 const OUTPUT_DIR = path.resolve(__dirname, "../src");
 const MANIFEST_FILE = path.join(OUTPUT_DIR, "manifest.json");
-const CATEGORIES = ["ui", "notification", "game"];
 
 // Create output directory if it doesn't exist
 if (!fs.existsSync(OUTPUT_DIR)) {
@@ -29,6 +28,12 @@ function generateFileHash(filePath) {
   return hashSum.digest("hex").substring(0, 7);
 }
 
+// Get all valid category directories
+function getCategories() {
+  const items = fs.readdirSync(SOUNDS_DIR, { withFileTypes: true });
+  return items.filter((item) => item.isDirectory() && item.name !== ".DS_Store").map((item) => item.name);
+}
+
 // Main function
 async function generateManifest() {
   console.log("Generating manifest...");
@@ -38,15 +43,13 @@ async function generateManifest() {
     sounds: {},
   };
 
-  // Iterate through all categories and sound files
-  for (const category of CATEGORIES) {
-    const categoryPath = path.join(SOUNDS_DIR, category);
+  // Get all categories from the sounds directory
+  const categories = getCategories();
+  console.log(`Found categories: ${categories.join(", ")}`);
 
-    // Skip if category directory doesn't exist
-    if (!fs.existsSync(categoryPath)) {
-      console.warn(`Category directory not found: ${categoryPath}`);
-      continue;
-    }
+  // Iterate through all categories and sound files
+  for (const category of categories) {
+    const categoryPath = path.join(SOUNDS_DIR, category);
 
     const files = fs.readdirSync(categoryPath);
 

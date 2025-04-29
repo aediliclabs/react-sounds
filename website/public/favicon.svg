@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="32" height="32">
+  <!-- Sound waves -->
+  <circle cx="24" cy="50" r="18" fill="none" stroke="#60a5fa" stroke-width="4" stroke-opacity="0.3"/>
+  <circle cx="24" cy="50" r="10" fill="none" stroke="#60a5fa" stroke-width="4" stroke-opacity="0.5"/>
+  <!-- Waveform lines -->
+  <path d="M25 50 L35 30 L45 70 L55 30 L65 50 L75 40" 
+        stroke="#2563eb" 
+        stroke-width="10" 
+        fill="none" 
+        stroke-linecap="round" 
+        stroke-linejoin="round"/>
+</svg>

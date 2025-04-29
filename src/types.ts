@@ -3,30 +3,54 @@ import { Howl } from 'howler';
 /**
  * Categories of sounds available in the library
  */
-export type SoundCategory = 'ui' | 'notification' | 'game';
+export type SoundCategory = 'ambient' | 'arcade' | 'game' | 'misc' | 'notification' | 'system' | 'ui';
 
 /**
- * UiSoundName sound names
+ * AmbientSoundName sound names
  */
-export type UiSoundName = 'button_1';
+export type AmbientSoundName = 'campfire' | 'heartbeat' | 'rain' | 'water_stream' | 'wind';
 
 /**
- * NotificationSoundName sound names
+ * ArcadeSoundName sound names
  */
-export type NotificationSoundName = 'error_1' | 'success_1';
+export type ArcadeSoundName = 'coin' | 'coin_bling' | 'jump' | 'level_down' | 'level_up' | 'power_down' | 'power_up' | 'upgrade';
 
 /**
  * GameSoundName sound names
  */
-export type GameSoundName = 'coin_1';
+export type GameSoundName = 'coin' | 'hit' | 'miss' | 'portal_closing' | 'portal_opening' | 'void';
+
+/**
+ * MiscSoundName sound names
+ */
+export type MiscSoundName = 'silence';
+
+/**
+ * NotificationSoundName sound names
+ */
+export type NotificationSoundName = 'completed' | 'error' | 'info' | 'message' | 'notification' | 'popup' | 'reminder' | 'success' | 'warning';
+
+/**
+ * SystemSoundName sound names
+ */
+export type SystemSoundName = 'boot_down' | 'boot_up' | 'device_connect' | 'device_disconnect' | 'lock' | 'screenshot' | 'trash';
+
+/**
+ * UiSoundName sound names
+ */
+export type UiSoundName = 'blocked' | 'button_hard' | 'button_hard_double' | 'button_medium' | 'button_soft' | 'button_soft_double' | 'button_squishy' | 'buzz' | 'buzz_deep' | 'buzz_long' | 'copy' | 'input_blur' | 'input_focus' | 'item_deselect' | 'item_select' | 'keystroke_hard' | 'keystroke_medium' | 'keystroke_soft' | 'panel_collapse' | 'panel_expand' | 'pop_close' | 'pop_open' | 'popup_close' | 'popup_open' | 'radio_select' | 'send' | 'submit' | 'success_bling' | 'success_blip' | 'success_chime' | 'tab_close' | 'tab_open' | 'toggle_off' | 'toggle_on' | 'window_close' | 'window_open';
 
 /**
  * All available sound names
  */
 export type SoundName = 
-  | `ui/${UiSoundName}`
+  | `ambient/${AmbientSoundName}`
+  | `arcade/${ArcadeSoundName}`
+  | `game/${GameSoundName}`
+  | `misc/${MiscSoundName}`
   | `notification/${NotificationSoundName}`
-  | `game/${GameSoundName}`;
+  | `system/${SystemSoundName}`
+  | `ui/${UiSoundName}`;
 
 /**
  * Sound options for playback

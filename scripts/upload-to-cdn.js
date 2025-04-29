@@ -10,13 +10,28 @@
  * - DO_SPACES_ENDPOINT: DigitalOcean Spaces endpoint (e.g., nyc3.digitaloceanspaces.com)
  * - DO_SPACES_NAME: DigitalOcean Space name
  * - CDN_PATH: Optional path prefix (defaults to "v1")
+ *
+ * Command line arguments:
+ * --delete: Delete existing files before uploading
  */
 
 require("dotenv").config();
 
 const fs = require("fs");
 const path = require("path");
+const yargs = require("yargs/yargs");
+const { hideBin } = require("yargs/helpers");
 const { S3Client, PutObjectCommand, ListObjectsV2Command, DeleteObjectCommand } = require("@aws-sdk/client-s3");
+
+// Parse command line arguments
+const argv = yargs(hideBin(process.argv))
+  .option("delete", {
+    alias: "d",
+    type: "boolean",
+    description: "Delete existing files before uploading",
+    default: false,
+  })
+  .help().argv;
 
 // Configuration
 const SOUNDS_DIR = path.resolve(__dirname, "../sounds");
@@ -53,13 +68,16 @@ const s3Client = new S3Client({
 // Main function
 async function uploadToSpaces() {
   const spaceName = process.env.DO_SPACES_NAME;
-  const endpoint = process.env.DO_SPACES_ENDPOINT;
 
   console.log(`Uploading sound files to DigitalOcean Spaces (${spaceName})...`);
 
-  // Clear existing files in the CDN directory
-  console.log(`Clearing existing files in ${CDN_PATH}...`);
-  await clearDirectory(spaceName, CDN_PATH);
+  // Clear existing files in the CDN directory if --delete flag is provided
+  if (argv.delete) {
+    console.log(`Clearing existing files in ${CDN_PATH}...`);
+    await clearDirectory(spaceName, CDN_PATH);
+  } else {
+    console.log(`Skipping file deletion (use --delete flag to clear existing files)`);
+  }
 
   // Load manifest
   const manifest = JSON.parse(fs.readFileSync(MANIFEST_FILE, "utf8"));

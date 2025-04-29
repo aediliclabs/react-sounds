@@ -1,9 +1,18 @@
-import { Howl } from "howler";
+import { Howl, Howler } from "howler";
 import manifest from "./manifest.json";
 import { SoundName, SoundOptions } from "./types";
 
 // Default CDN base URL
 let cdnBaseUrl = "https://reacticons.sfo3.cdn.digitaloceanspaces.com/v1";
+
+// Global sound enabled state
+let soundEnabledGlobal = true;
+
+// Global event listeners for sound state changes
+const soundStateListeners: Array<(enabled: boolean) => void> = [];
+
+// Track if we've already set up audio context unlocking
+let audioUnlockInitialized = false;
 
 /**
  * Set a custom CDN base URL
@@ -40,31 +49,25 @@ export function makeRemoteSound(name: SoundName): () => Promise<Howl> {
  * Try to load a sound from the local filesystem first, then fall back to CDN
  */
 async function loadSound(name: SoundName): Promise<Howl> {
-  // Check if the sound is in the manifest
   if (!manifest.sounds[name]) {
     throw new Error(`Sound "${name}" not found in manifest`);
   }
 
-  // First try to load from local path
   const localPath = getLocalSoundPath(name);
-  if (localPath) {
-    return new Promise((resolve) => {
-      const howl: Howl = new Howl({
-        src: [localPath],
-        format: ["mp3"],
-        preload: true,
-        onload: () => resolve(howl),
-        onloaderror: (_, error) => {
-          console.warn(`Error loading local sound "${name}", falling back to CDN:`, error);
-          // Fall back to CDN
-          loadSoundFromCDN(name).then(resolve);
-        },
-      });
-    });
-  }
+  if (!localPath) return loadSoundFromCDN(name);
 
-  // If no local path, load from CDN
-  return loadSoundFromCDN(name);
+  return new Promise((resolve) => {
+    const howl: Howl = new Howl({
+      src: [localPath],
+      format: ["mp3"],
+      preload: true,
+      onload: () => resolve(howl),
+      onloaderror: (_, error) => {
+        console.warn(`Error loading local sound "${name}", falling back to CDN:`, error);
+        loadSoundFromCDN(name).then(resolve);
+      },
+    });
+  });
 }
 
 /**
@@ -74,40 +77,12 @@ async function loadSoundFromCDN(name: SoundName): Promise<Howl> {
   const soundInfo = manifest.sounds[name];
   const soundUrl = `${cdnBaseUrl}/${soundInfo.src}`;
 
-  // Try to fetch the sound from the cache (if in a browser environment)
-  if (typeof window !== "undefined") {
-    try {
-      const response = await fetch(soundUrl);
-      const blob = await response.blob();
-      const objectUrl = URL.createObjectURL(blob);
-
-      return new Promise((resolve) => {
-        const howl: Howl = new Howl({
-          src: [objectUrl],
-          format: ["mp3"],
-          preload: true,
-          onload: () => resolve(howl),
-          onloaderror: (_, error) => {
-            console.error(`Error loading sound "${name}":`, error);
-            resolve(howl); // Resolve anyway to prevent hanging promises
-          },
-        });
-      });
-    } catch (error) {
-      console.error(`Error fetching sound "${name}":`, error);
-      // Fall back to direct loading
-      return new Howl({
-        src: [soundUrl],
-        format: ["mp3"],
-      });
-    }
-  } else {
-    // Server-side or non-browser environment - return a mock
-    return new Howl({
-      src: [soundUrl],
-      format: ["mp3"],
-    });
-  }
+  return new Howl({
+    src: [soundUrl],
+    format: ["mp3"],
+    preload: true,
+    html5: true, // Enable streaming
+  });
 }
 
 /**
@@ -128,7 +103,10 @@ export function preloadSounds(names: SoundName[]): Promise<Howl[]> {
  * Play a sound by name
  */
 export async function playSound(name: SoundName, options?: SoundOptions): Promise<void> {
-  const sound = await makeRemoteSound(name)();
+  if (!isSoundEnabled()) return;
+
+  const soundPromise = makeRemoteSound(name)();
+  const sound = await soundPromise;
 
   if (options) {
     if (options.volume !== undefined) sound.volume(options.volume);
@@ -140,54 +118,113 @@ export async function playSound(name: SoundName, options?: SoundOptions): Promis
 }
 
 /**
- * Check if the environment should have sound enabled
+ * Check if sounds are enabled
  */
 export function isSoundEnabled(): boolean {
-  // Don't play sounds on the server
-  if (typeof window === "undefined") return false;
-
-  // User might have set a preference
-  const savedPreference = typeof localStorage !== "undefined" ? localStorage.getItem("react-sounds-enabled") : null;
-
-  return savedPreference !== "false";
+  if (typeof window === "undefined") return false; // Server environment not supported
+  return soundEnabledGlobal;
 }
 
 /**
  * Enable or disable all sounds
+ * This is used internally by the SoundProvider
  */
 export function setSoundEnabled(enabled: boolean): void {
-  if (typeof localStorage !== "undefined") {
-    localStorage.setItem("react-sounds-enabled", enabled ? "true" : "false");
+  soundEnabledGlobal = enabled;
+
+  // Store in localStorage for persistence
+  if (typeof localStorage !== "undefined") localStorage.setItem("react-sounds-enabled", enabled ? "true" : "false");
+
+  soundStateListeners.forEach((listener) => listener(enabled));
+}
+
+/**
+ * Initialize the sound enabled state
+ * Called at startup to load saved preference
+ */
+export function initSoundEnabledState(): void {
+  if (typeof localStorage === "undefined") return;
+
+  const savedPreference = localStorage.getItem("react-sounds-enabled");
+  if (savedPreference !== null) {
+    soundEnabledGlobal = savedPreference !== "false";
   }
+}
+
+/**
+ * Subscribe to sound enabled state changes
+ */
+export function subscribeSoundState(callback: (enabled: boolean) => void): () => void {
+  soundStateListeners.push(callback);
+
+  // Return unsubscribe function
+  return () => {
+    const index = soundStateListeners.indexOf(callback);
+    if (index !== -1) soundStateListeners.splice(index, 1);
+  };
 }
 
 /**
  * Get the local path for a sound when using the offline mode
  */
 export function getLocalSoundPath(name: SoundName): string | null {
-  // First check if the sound exists in the public directory
   const publicPath = `/sounds/${name}.mp3`;
 
-  // Check if file exists in DOM context
-  if (typeof document !== "undefined") {
-    const xhr = new XMLHttpRequest();
+  if (typeof document === "undefined") return null;
+
+  const xhr = new XMLHttpRequest();
+  try {
     xhr.open("HEAD", publicPath, false);
+    xhr.send();
+    if (xhr.status === 200) return publicPath;
+  } catch (e) {}
+
+  return null;
+}
+
+/**
+ * Unlock the audio context globally to allow playback without direct user interaction
+ */
+export async function unlockAudioContext(): Promise<void> {
+  if (typeof window === "undefined" || !Howler.ctx) return;
+
+  if (Howler.ctx.state === "suspended") {
     try {
-      xhr.send();
-      if (xhr.status === 200) {
-        return publicPath;
-      }
-    } catch (e) {
-      // Ignore errors and try alternative methods
+      await Howler.ctx.resume();
+    } catch (error) {
+      console.warn("Failed to unlock audio context:", error);
     }
   }
+}
 
-  try {
-    // webpack/vite will throw if this fails to resolve
-    // @ts-ignore - dynamic require for sounds
-    require(`../assets/${name}.mp3`);
-    return `../assets/${name}.mp3`;
-  } catch (e) {
-    return null;
-  }
+/**
+ * Setup global event listeners to unlock audio context on user interaction
+ * Can be called multiple times safely (will only set up listeners once)
+ */
+export function initAudioContextUnlock(): () => void {
+  if (typeof window === "undefined" || audioUnlockInitialized) return () => {};
+
+  audioUnlockInitialized = true;
+
+  const events = ["click", "touchstart", "keydown"];
+
+  const handleInteraction = () => {
+    unlockAudioContext();
+    events.forEach((event) => document.removeEventListener(event, handleInteraction));
+  };
+
+  events.forEach((event) => document.addEventListener(event, handleInteraction));
+
+  // Return cleanup function
+  return () => {
+    events.forEach((event) => document.removeEventListener(event, handleInteraction));
+  };
+}
+
+// Initialize sound state
+initSoundEnabledState();
+
+// Initialize audio context unlocking if we're in a browser environment
+if (typeof window !== "undefined") {
+  initAudioContextUnlock();
 }

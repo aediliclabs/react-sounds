@@ -10,7 +10,7 @@ export {
 } from "./runtime";
 
 // Export hooks
-export { useSound, useSoundOnChange } from "./hooks";
+export { useSound, useSoundEnabled, useSoundOnChange } from "./hooks";
 
 // Export components
 export { Sound, SoundButton, SoundProvider } from "./components";
