@@ -103,7 +103,7 @@ export function useSound(soundName: SoundName, defaultOptions: SoundOptions = {}
         throw error;
       }
     },
-    [defaultOptions, enabled, ensureLoaded]
+    [defaultOptions, enabled, ensureLoaded, isLoaded]
   );
 
   const stop = useCallback(() => {
@@ -149,16 +149,15 @@ export function useSound(soundName: SoundName, defaultOptions: SoundOptions = {}
       setIsLoaded(false);
       setIsPlaying(false);
 
-      if (!soundRef.current) return;
-      soundRef.current.stop();
-      soundRef.current = freeSound(soundName);
-
-      // Resolve any pending promises
       activeSoundsRef.current.forEach((sound) => {
-        if (sound.resolver) sound.resolver();
+        if (sound.resolver) sound.resolver(); // Resolve any pending promises
       });
-
       activeSoundsRef.current = [];
+
+      if (soundRef.current) {
+        soundRef.current.stop();
+        soundRef.current = freeSound(soundName);
+      }
     };
   }, [soundName]);
 
