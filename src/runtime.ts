@@ -54,34 +54,24 @@ async function loadSound(name: SoundName): Promise<Howl> {
   }
 
   const localPath = getLocalSoundPath(name);
-  if (!localPath) return loadSoundFromCDN(name);
+  const cdnPath = `${cdnBaseUrl}/${manifest.sounds[name].src}`;
 
-  return new Promise((resolve) => {
+  // Create a Howl that can fallback automatically
+  return new Promise((resolve, reject) => {
+    const paths = localPath ? [localPath, cdnPath] : [cdnPath];
     const howl: Howl = new Howl({
-      src: [localPath],
+      src: paths,
       format: ["mp3"],
       preload: true,
+      html5: true, // Enable streaming for better performance
       onload: () => resolve(howl),
       onloaderror: (_, error) => {
-        console.warn(`Error loading local sound "${name}", falling back to CDN:`, error);
-        loadSoundFromCDN(name).then(resolve);
+        // If we have multiple sources, Howler will automatically try the next one
+        // This error will only be called when all sources fail
+        console.warn(`Error loading sound "${name}":`, error);
+        reject(error);
       },
     });
-  });
-}
-
-/**
- * Load a sound from the CDN
- */
-async function loadSoundFromCDN(name: SoundName): Promise<Howl> {
-  const soundInfo = manifest.sounds[name];
-  const soundUrl = `${cdnBaseUrl}/${soundInfo.src}`;
-
-  return new Howl({
-    src: [soundUrl],
-    format: ["mp3"],
-    preload: true,
-    html5: true, // Enable streaming
   });
 }
 
@@ -172,14 +162,9 @@ export function getLocalSoundPath(name: SoundName): string | null {
 
   if (typeof document === "undefined") return null;
 
-  const xhr = new XMLHttpRequest();
-  try {
-    xhr.open("HEAD", publicPath, false);
-    xhr.send();
-    if (xhr.status === 200) return publicPath;
-  } catch (e) {}
-
-  return null;
+  // Return the path directly without checking if it exists
+  // The Howl loader will handle fallback if the file doesn't exist
+  return publicPath;
 }
 
 /**

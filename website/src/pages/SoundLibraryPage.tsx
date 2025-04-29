@@ -55,13 +55,26 @@ interface SoundItemProps {
 
 // Sound item component
 const SoundItem: React.FC<SoundItemProps> = ({ soundKey, metadata }) => {
-  const { play, stop, isPlaying, isLoaded } = useSound(soundKey);
+  const [loadSound, setLoadSound] = useState(false);
+  const { play, stop, isPlaying, isLoaded } = loadSound
+    ? useSound(soundKey)
+    : {
+        play: () => setLoadSound(true),
+        stop: () => {},
+        isPlaying: false,
+        isLoaded: false,
+      };
   const [copied, setCopied] = useState(false);
   const displayName = soundKey.split("/").pop();
   const category = soundKey.split("/")[0];
   const categoryColor = getCategoryColor(category);
 
   const handlePlay = (): void => {
+    if (!loadSound) {
+      setLoadSound(true);
+      return;
+    }
+
     if (isPlaying) {
       stop();
     } else {
@@ -223,6 +236,7 @@ const SoundLibraryPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [initialLoading, setInitialLoading] = useState(true);
 
   const categories = useMemo(() => extractCategories(), []);
 
@@ -230,9 +244,7 @@ const SoundLibraryPage: React.FC = () => {
   const filteredSounds = useMemo(() => {
     return Object.entries(manifest.sounds).filter(([soundKey]) => {
       const matchesSearch = searchTerm === "" || soundKey.toLowerCase().includes(searchTerm.toLowerCase());
-
       const matchesCategory = selectedCategory === "" || soundKey.startsWith(selectedCategory + "/");
-
       return matchesSearch && matchesCategory;
     });
   }, [searchTerm, selectedCategory]);
@@ -245,6 +257,14 @@ const SoundLibraryPage: React.FC = () => {
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, selectedCategory]);
+
+  // Simulate initial loading for better UX
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setInitialLoading(false);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <div className="container mx-auto px-4 py-12 max-w-5xl">
@@ -374,7 +394,24 @@ const SoundLibraryPage: React.FC = () => {
       </div>
 
       {/* Sound grid */}
-      {paginatedSounds.length > 0 ? (
+      {initialLoading ? (
+        <div className="text-center py-12 bg-gray-50 rounded-lg">
+          <svg
+            className="animate-spin mx-auto h-12 w-12 text-blue-500"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+            ></path>
+          </svg>
+          <h3 className="mt-2 text-lg font-medium text-gray-900">Loading sound library...</h3>
+        </div>
+      ) : paginatedSounds.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
           {paginatedSounds.map(([soundKey, metadata]) => (
             <SoundItem key={soundKey} soundKey={soundKey as SoundName} metadata={metadata} />
