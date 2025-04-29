@@ -1,7 +1,7 @@
 {
   "name": "react-sounds",
-  "version": "1.0.11",
-  "description": "A production-ready React library for playing sound effects in your applications",
+  "version": "1.0.12",
+  "description": "A library of ready-to-play sound effects for React applications.",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",
