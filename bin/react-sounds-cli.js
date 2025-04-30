@@ -3,10 +3,9 @@
 const fs = require("fs");
 const path = require("path");
 const https = require("https");
-const { execSync } = require("child_process");
 
 // Load the manifest
-const manifestPath = path.join(__dirname, "../src/manifest.json");
+const manifestPath = path.join(__dirname, "../dist/manifest.json");
 let manifest;
 
 try {

@@ -400,6 +400,21 @@ function SoundPlayer() {
   return <button onClick={playWithOptions}>Play with Options</button>;
 }`}
         </CodeBlock>
+
+        <h3 className="text-xl font-semibold text-gray-700 mt-6 mb-3">CLI Tool for Offline Sounds</h3>
+        <p className="text-gray-600 mb-2">
+          Use the CLI tool to download sounds for offline use or explore available sounds.
+        </p>
+        <CodeBlock language="bash">
+          {`# List all available sounds
+npx react-sounds-cli list
+
+# Download specific sounds for offline use
+npx react-sounds-cli pick ui/click notification/success
+
+# Download sounds to a custom directory
+npx react-sounds-cli pick ui/click --output=./public/sounds`}
+        </CodeBlock>
       </section>
 
       {/* Type Information */}
