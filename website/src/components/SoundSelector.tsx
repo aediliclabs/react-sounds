@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { SoundName } from "react-sounds";
+import { LibrarySoundName } from "react-sounds";
 import manifest from "../manifest.json";
 
 interface SoundSelectorProps {
-  onSelect: (sound: SoundName) => void;
-  value?: SoundName;
+  onSelect: (sound: LibrarySoundName) => void;
+  value?: LibrarySoundName;
 }
 
 const SoundSelector: React.FC<SoundSelectorProps> = ({ onSelect, value }) => {
@@ -13,7 +13,7 @@ const SoundSelector: React.FC<SoundSelectorProps> = ({ onSelect, value }) => {
 
   // Group sounds by category for better organization
   const soundGroups = useMemo(() => {
-    const groups: Record<string, SoundName[]> = {};
+    const groups: Record<string, LibrarySoundName[]> = {};
 
     // Extract sounds from manifest and group by category
     Object.keys(manifest.sounds).forEach((soundKey) => {
@@ -23,7 +23,7 @@ const SoundSelector: React.FC<SoundSelectorProps> = ({ onSelect, value }) => {
       if (!groups[categoryName]) {
         groups[categoryName] = [];
       }
-      groups[categoryName].push(soundKey as SoundName);
+      groups[categoryName].push(soundKey as LibrarySoundName);
     });
 
     return groups;
@@ -33,7 +33,7 @@ const SoundSelector: React.FC<SoundSelectorProps> = ({ onSelect, value }) => {
   const filteredSounds = useMemo(() => {
     if (!searchTerm) return soundGroups;
 
-    const filtered: Record<string, SoundName[]> = {};
+    const filtered: Record<string, LibrarySoundName[]> = {};
     Object.entries(soundGroups).forEach(([category, sounds]) => {
       const matchingSounds = sounds.filter((sound) => sound.toLowerCase().includes(searchTerm.toLowerCase()));
       if (matchingSounds.length > 0) {
@@ -43,7 +43,7 @@ const SoundSelector: React.FC<SoundSelectorProps> = ({ onSelect, value }) => {
     return filtered;
   }, [searchTerm, soundGroups]);
 
-  const handleSelect = (sound: SoundName) => {
+  const handleSelect = (sound: LibrarySoundName) => {
     onSelect(sound);
     setSearchTerm(sound);
     setIsOpen(false);

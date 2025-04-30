@@ -60,6 +60,9 @@ const DocumentationPage: React.FC = () => {
             🔊 <strong>Extensive Sound Library</strong>: Organized by category (ui, notification, game, etc.).
           </li>
           <li>
+            🎵 <strong>Custom Sounds</strong>: Use your own sound files by requiring them directly.
+          </li>
+          <li>
             🪶 <strong>Lightweight</strong>: Only JS wrappers included; audio files hosted on CDN.
           </li>
           <li>
@@ -128,20 +131,48 @@ function Button() {
 }`}
         </CodeBlock>
 
+        <h3 className="text-xl font-semibold text-gray-700 mt-6 mb-3">Using Custom Sound Files</h3>
+        <p className="text-gray-600 mb-2">You can use your own custom sound files by requiring them directly:</p>
+        <CodeBlock language="tsx">
+          {`import { useSound } from 'react-sounds';
+import customClickSound from '../assets/sounds/click.mp3';
+
+function Button() {
+  // Use a custom sound file by requiring it
+  const { play } = useSound(customClickSound);
+  
+  return (
+    <button onClick={() => play()}>
+      Custom Sound Button
+    </button>
+  );
+}`}
+        </CodeBlock>
+
         <h3 className="text-xl font-semibold text-gray-700 mt-6 mb-3">
           Direct Sound Playing with <code className={cn("font-mono bg-gray-200 px-1 rounded")}>playSound</code>
         </h3>
         <p className="text-gray-600 mb-2">For simple, one-off sound playback without needing state or controls.</p>
         <CodeBlock language="tsx">
           {`import { playSound } from 'react-sounds';
+import customSound from '../assets/sounds/notification.mp3';
 
 function Button() {
-  const handleClick = () => playSound('ui/button_1'); 
+  // You can use built-in sounds
+  const handleClick = () => playSound('ui/button_1');
+  
+  // Or your own custom sounds
+  const handleCustomSound = () => playSound(customSound);
   
   return (
-    <button onClick={handleClick}>
-      Click Me
-    </button>
+    <div>
+      <button onClick={handleClick}>
+        Built-in Sound
+      </button>
+      <button onClick={handleCustomSound}>
+        Custom Sound
+      </button>
+    </div>
   );
 }`}
         </CodeBlock>
@@ -156,12 +187,13 @@ function Button() {
         </p>
         <CodeBlock language="tsx">
           {`import { SoundProvider } from 'react-sounds';
+import customSound from '../assets/sounds/startup.mp3';
 
 function App() {
   return (
     <SoundProvider 
-      // Optional: preload commonly used sounds for immediate playback
-      preload={['ui/button_click', 'notification/success']} 
+      // Optional: preload both built-in and custom sounds
+      preload={['ui/button_click', 'notification/success', customSound]} 
       // Optional: set initial sound enabled state (defaults to true)
       initialEnabled={true}
     >
@@ -181,13 +213,14 @@ function App() {
         </h3>
         <p className="text-gray-600 mb-2">
           The <code className={cn("font-mono bg-gray-200 px-1 rounded")}>useSound</code> hook provides full control over
-          sound playback.
+          sound playback. It works with both built-in sound names and custom sound files.
         </p>
         <CodeBlock language="tsx">
           {`import { useSound } from 'react-sounds';
+import customSound from '../assets/sounds/custom.mp3';
 
 function SoundPlayer() {
-  // Full API with all returned values
+  // Using a built-in sound
   const { 
     play,   // Function to play the sound
     stop,   // Function to stop the sound
@@ -197,8 +230,8 @@ function SoundPlayer() {
     isLoaded,  // Boolean indicating if sound has been loaded
   } = useSound('ui/button_1');
   
-  // With default options
-  const { play: playWithOptions } = useSound('notification/success', { 
+  // Using a custom sound file with options
+  const { play: playCustom } = useSound(customSound, { 
     volume: 0.8, 
     rate: 1.2,
     loop: false
@@ -206,8 +239,8 @@ function SoundPlayer() {
   
   return (
     <div>
-      <button onClick={() => play()} disabled={!isLoaded}>Play Sound</button>
-      <button onClick={() => play({ volume: 0.5 })}>Play Quiet</button>
+      <button onClick={() => play()} disabled={!isLoaded}>Play Built-in Sound</button>
+      <button onClick={() => playCustom()}>Play Custom Sound</button>
       <button onClick={() => pause()} disabled={!isPlaying}>Pause</button>
       <button onClick={() => resume()} disabled={isPlaying}>Resume</button>
       <button onClick={() => stop()}>Stop</button>
@@ -225,7 +258,7 @@ function SoundPlayer() {
 function NotificationBanner() {
   return (
     <Sound 
-      name="notification/alert" 
+      name="notification/alert"
       trigger="mount" // 'mount', 'unmount', or 'none'
       options={{ volume: 0.8 }}
       onLoad={() => console.log('Sound loaded')}
@@ -238,11 +271,13 @@ function NotificationBanner() {
   );
 }
 
+import customNotification from '../assets/sounds/notification.mp3';
+
 // Button that plays a sound when clicked
 function ActionButton({ onClick }) {
   return (
     <SoundButton 
-      sound="ui/click" 
+      sound="ui/click" // Can also use custom sound import
       soundOptions={{ volume: 0.7 }}
       onClick={onClick}
       onSoundError={(error) => console.error('Sound error:', error)}
@@ -291,11 +326,14 @@ function SoundToggle() {
         <h2 className="text-3xl font-bold text-gray-800 mb-6">Advanced Usage</h2>
 
         <h3 className="text-xl font-semibold text-gray-700 mb-3">Configuring CDN URL</h3>
-        <p className="text-gray-600 mb-2">Configure where sound files are loaded from.</p>
+        <p className="text-gray-600 mb-2">
+          Configure where built-in sound files are loaded from. Note: This doesn't affect custom sound files that you
+          import directly.
+        </p>
         <CodeBlock language="tsx">
           {`import { setCDNUrl, getCDNUrl } from 'react-sounds';
 
-// Set a custom CDN base URL
+// Set a custom CDN base URL for built-in sounds
 setCDNUrl('https://your-cdn.com/sounds');
 
 // Get the current CDN URL
@@ -323,9 +361,10 @@ setSoundEnabled(true);`}
         <p className="text-gray-600 mb-2">Preload sounds to ensure they are ready for immediate playback.</p>
         <CodeBlock language="tsx">
           {`import { preloadSounds } from 'react-sounds';
+import customSound from '../assets/sounds/custom.mp3';
 
-// Preload multiple sounds at once
-preloadSounds(['ui/button_1', 'notification/success', 'game/coin'])
+// Preload multiple sounds at once (both built-in and custom)
+preloadSounds(['ui/button_1', 'notification/success', customSound])
   .then(() => console.log('All sounds preloaded'))
   .catch((error) => console.error('Error preloading sounds:', error));`}
         </CodeBlock>
@@ -334,6 +373,7 @@ preloadSounds(['ui/button_1', 'notification/success', 'game/coin'])
         <p className="text-gray-600 mb-2">Customize sound playback with various options.</p>
         <CodeBlock language="tsx">
           {`import { useSound, playSound, SoundOptions } from 'react-sounds';
+import customExplosion from '../assets/sounds/explosion.mp3';
 
 // SoundOptions interface:
 // {
@@ -343,7 +383,7 @@ preloadSounds(['ui/button_1', 'notification/success', 'game/coin'])
 // }
 
 function SoundPlayer() {
-  const { play } = useSound('game/explosion');
+  const { play } = useSound(customExplosion);
   
   const playWithOptions = () => {
     // Play with custom options
@@ -369,27 +409,29 @@ function SoundPlayer() {
           react-sounds provides TypeScript definitions for all exported functions, hooks, components, and types.
         </p>
 
-        <h3 className="text-xl font-semibold text-gray-700 mb-3">Sound Categories</h3>
-        <p className="text-gray-600 mb-2">
-          Sounds are organized by category to help with discoverability and organization.
-        </p>
+        <h3 className="text-xl font-semibold text-gray-700 mb-3">Sound Types</h3>
+        <p className="text-gray-600 mb-2">Sounds can be either built-in sound names or custom imported sound files.</p>
         <CodeBlock language="tsx">
           {`import type { 
-  SoundName,         // Union of all sound categories
+  LibrarySoundName,         // Union of all built-in sound categories
   UiSoundName,       // UI sounds (clicks, toggles, etc.)
   GameSoundName,     // Game sounds (achievements, actions, etc.)
   NotificationSoundName // Notification sounds (alerts, success, etc.)
 } from 'react-sounds';
+import customSound from '../assets/sounds/custom.mp3';
 
 // Using with type safety
 function PlaySounds() {
+  // For built-in sounds, use the type for type checking
   const playUiSound = (sound: UiSoundName) => playSound(sound);
-  const playGameSound = (sound: GameSoundName) => playSound(sound);
+  
+  // For custom sounds, just import and use directly
+  const playCustomSound = () => playSound(customSound);
   
   return (
     <div>
       <button onClick={() => playUiSound('ui/click')}>UI Sound</button>
-      <button onClick={() => playGameSound('game/win')}>Game Sound</button>
+      <button onClick={playCustomSound}>Custom Sound</button>
     </div>
   );
 }`}

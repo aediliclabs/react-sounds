@@ -1,21 +1,21 @@
 import CodeBlock from "@/components/CodeBlock";
 import React, { useState } from "react";
-import { SoundName, useSound } from "react-sounds";
+import { LibrarySoundName, useSound } from "react-sounds";
 import SoundSelector from "./SoundSelector";
 
 interface SoundButtonProps {
-  soundName: SoundName;
+  soundName: LibrarySoundName;
   label: string;
 }
 
 interface CategorySoundButtonProps {
-  sound: SoundName;
+  sound: LibrarySoundName;
 }
 
 interface Category {
   name: string;
   description: string;
-  sounds: SoundName[];
+  sounds: LibrarySoundName[];
 }
 
 // Enhanced sound demo component with more interactive features
@@ -80,7 +80,7 @@ const AdvancedSoundController: React.FC = () => {
   const [volume, setVolume] = useState<number>(0.7);
   const [rate, setRate] = useState<number>(1.0);
   const [loop, setLoop] = useState<boolean>(false);
-  const [selectedSound, setSelectedSound] = useState<SoundName>("notification/success");
+  const [selectedSound, setSelectedSound] = useState<LibrarySoundName>("notification/success");
 
   const { play, stop, pause, resume, isPlaying, isLoaded } = useSound(selectedSound);
 

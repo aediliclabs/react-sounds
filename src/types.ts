@@ -42,7 +42,7 @@ export type UiSoundName = 'blocked' | 'button_hard' | 'button_hard_double' | 'bu
 /**
  * All available sound names
  */
-export type SoundName = 
+export type LibrarySoundName =
   | `ambient/${AmbientSoundName}`
   | `arcade/${ArcadeSoundName}`
   | `game/${GameSoundName}`

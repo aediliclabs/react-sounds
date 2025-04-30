@@ -18,10 +18,10 @@ export { Sound, SoundButton, SoundProvider } from "./components";
 // Export types
 export type {
   GameSoundName,
+  LibrarySoundName,
   NotificationSoundName,
   SoundCategory,
   SoundHookReturn,
-  SoundName,
   SoundOptions,
   UiSoundName,
 } from "./types";

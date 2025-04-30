@@ -5,10 +5,11 @@ import {
   playSound,
   preloadSounds,
   setSoundEnabled,
+  SoundName,
   subscribeSoundState,
   unlockAudioContext,
 } from "./runtime";
-import { SoundName, SoundOptions } from "./types";
+import { SoundOptions } from "./types";
 
 /**
  * Props for the Sound component

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { SoundName, useSound } from "react-sounds";
+import { LibrarySoundName, useSound } from "react-sounds";
 import manifest from "../manifest.json";
 import { cn } from "../utils/cn";
 
@@ -47,7 +47,7 @@ const extractCategories = (): string[] => {
 };
 
 interface SoundItemProps {
-  soundKey: SoundName;
+  soundKey: LibrarySoundName;
   metadata: {
     duration: number;
   };
@@ -377,7 +377,7 @@ const SoundLibraryPage: React.FC = () => {
       {paginatedSounds.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
           {paginatedSounds.map(([soundKey, metadata]) => (
-            <SoundItem key={soundKey} soundKey={soundKey as SoundName} metadata={metadata} />
+            <SoundItem key={soundKey} soundKey={soundKey as LibrarySoundName} metadata={metadata} />
           ))}
         </div>
       ) : (

@@ -1,7 +1,7 @@
 import { Howl } from "howler";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
-import { claimSound, freeSound, isSoundEnabled, preloadSounds, unlockAudioContext } from "./runtime";
-import { SoundHookReturn, SoundName, SoundOptions } from "./types";
+import { claimSound, freeSound, isSoundEnabled, preloadSounds, SoundName, unlockAudioContext } from "./runtime";
+import { SoundHookReturn, SoundOptions } from "./types";
 
 interface SoundContextType {
   enabled: boolean;

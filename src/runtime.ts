@@ -1,6 +1,12 @@
 import { Howl, Howler } from "howler";
 import manifest from "./manifest.json";
-import { SoundName, SoundOptions } from "./types";
+import { LibrarySoundName, SoundOptions } from "./types";
+
+export type SoundName = LibrarySoundName | string;
+
+export function isLibrarySoundName(name: any): name is LibrarySoundName {
+  return name in manifest.sounds;
+}
 
 // Default CDN base URL
 let cdnBaseUrl = "https://reacticons.sfo3.cdn.digitaloceanspaces.com/v1";
@@ -76,10 +82,6 @@ export function freeSound(name: SoundName) {
  * Fetches sound data as a blob, from local filesystem or CDN
  */
 async function fetchSoundBlob(name: SoundName): Promise<Blob> {
-  if (!manifest.sounds[name]) {
-    throw new Error(`Sound "${name}" not found in manifest`);
-  }
-
   try {
     // Try to fetch from local first
     const localPath = await getLocalSoundPath(name);
@@ -90,6 +92,8 @@ async function fetchSoundBlob(name: SoundName): Promise<Blob> {
   } catch (error) {
     console.warn(`Error loading local sound "${name}", falling back to CDN:`, error);
   }
+
+  if (!isLibrarySoundName(name)) throw new Error(`Failed to load custom sound "${name}"`);
 
   // Fall back to CDN
   const soundInfo = manifest.sounds[name];
@@ -230,10 +234,9 @@ export function subscribeSoundState(callback: (enabled: boolean) => void): () =>
  * Get the local path for a sound when using the offline mode
  */
 export async function getLocalSoundPath(name: SoundName): Promise<string | null> {
+  if (!isLibrarySoundName(name)) return name;
+
   const publicPath = `/sounds/${name}.mp3`;
-
-  if (typeof document === "undefined") return null;
-
   try {
     // Add a timeout of 300ms to quickly fall back to CDN if file isn't available
     const controller = new AbortController();

@@ -65,7 +65,7 @@ export type ${categoryTypeName} = ${soundNames.map((name) => `'${name}'`).join("
   content += `/**
  * All available sound names
  */
-export type SoundName = 
+export type LibrarySoundName =
   ${Object.entries(soundsByCategory)
     .map(([category, _]) => {
       const categoryTypeName = `${category.charAt(0).toUpperCase()}${category.slice(1)}SoundName`;
