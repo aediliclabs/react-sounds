@@ -38,8 +38,7 @@ async function generateTypes() {
   }
 
   // Generate TypeScript content
-  let content = `import { Howl } from 'howler';
-
+  let content = `
 /**
  * Categories of sounds available in the library
  */
@@ -127,11 +126,6 @@ export interface SoundHookReturn {
    * Check if the sound is loaded
    */
   isLoaded: boolean;
-  
-  /**
-   * The underlying Howl instance (if loaded)
-   */
-  soundRef: React.Ref<Howl | null>;
 }`;
 
   // Save the file

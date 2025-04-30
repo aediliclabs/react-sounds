@@ -10,7 +10,7 @@ const Header: React.FC = () => {
     setIsEnabled(!soundIsEnabled);
   };
 
-  useSoundOnChange("ui/toggle_on", soundIsEnabled);
+  useSoundOnChange("ui/toggle_on", soundIsEnabled, { initial: false });
 
   return (
     <header className="bg-white shadow-sm">

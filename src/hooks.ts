@@ -103,6 +103,7 @@ export function useSound(soundName: SoundName, defaultOptions: SoundOptions = {}
         throw error;
       }
     },
+    // isLoaded is a required dep for handling changed sound name
     [defaultOptions, enabled, ensureLoaded, isLoaded]
   );
 
@@ -164,13 +165,22 @@ export function useSound(soundName: SoundName, defaultOptions: SoundOptions = {}
   return { play, stop, pause, resume, isPlaying, isLoaded };
 }
 
+interface UseSoundOnChangeOptions extends SoundOptions {
+  initial?: boolean;
+}
+
 /**
  * Hook for playing a sound when a value changes
  */
-export function useSoundOnChange<T>(soundName: SoundName, value: T, options?: SoundOptions): void {
+export function useSoundOnChange<T>(soundName: SoundName, value: T, options?: UseSoundOnChangeOptions): void {
   const { play } = useSound(soundName);
+  const initialRef = useRef(true);
 
   useEffect(() => {
+    const skipThisInitialRun = initialRef.current && options?.initial === false;
+    initialRef.current = false;
+    if (skipThisInitialRun) return;
+
     play(options).catch((err) => console.error("Failed to play sound:", err));
   }, [value]);
 }
