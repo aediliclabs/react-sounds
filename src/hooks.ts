@@ -172,7 +172,7 @@ export function useSoundOnChange<T>(soundName: SoundName, value: T, options?: So
 
   useEffect(() => {
     play(options).catch((err) => console.error("Failed to play sound:", err));
-  }, [value, play, options]);
+  }, [value]);
 }
 
 /**
