@@ -57,6 +57,7 @@ interface SoundItemProps {
 const SoundItem: React.FC<SoundItemProps> = ({ soundKey, metadata }) => {
   const { play, stop, isPlaying, isLoaded } = useSound(soundKey);
   const [copied, setCopied] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const displayName = soundKey.split("/").pop();
   const category = soundKey.split("/")[0];
   const categoryColor = getCategoryColor(category);
@@ -74,6 +75,33 @@ const SoundItem: React.FC<SoundItemProps> = ({ soundKey, metadata }) => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
+  };
+
+  const downloadSound = async (): Promise<void> => {
+    try {
+      setDownloading(true);
+
+      // Create a URL to the sound
+      const response = await fetch(`/sounds/${soundKey}.mp3`);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+
+      // Create a temporary anchor element to trigger download
+      const a = document.createElement("a");
+      a.style.display = "none";
+      a.href = url;
+      a.download = `${displayName || soundKey}.mp3`;
+      document.body.appendChild(a);
+      a.click();
+
+      // Clean up
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error("Error downloading sound:", error);
+    } finally {
+      setDownloading(false);
+    }
   };
 
   return (
@@ -188,32 +216,62 @@ const SoundItem: React.FC<SoundItemProps> = ({ soundKey, metadata }) => {
 
       {/* Sound path with copy to clipboard */}
       <div className="px-4 pb-4 flex items-center justify-between">
-        <code className="font-mono text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded truncate max-w-[80%]">
+        <code className="font-mono text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded truncate max-w-[60%]">
           {soundKey}
         </code>
-        <button
-          onClick={copyToClipboard}
-          className={cn(
-            "text-gray-500 p-1 rounded-full transition-colors",
-            copied ? "text-green-500 bg-green-50" : "hover:text-blue-600 hover:bg-blue-50"
-          )}
-          title="Copy sound ID to clipboard"
-        >
-          {copied ? (
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path
-                fillRule="evenodd"
-                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                clipRule="evenodd"
-              />
-            </svg>
-          ) : (
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
-              <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
-            </svg>
-          )}
-        </button>
+        <div className="flex space-x-2">
+          <button
+            onClick={copyToClipboard}
+            className={cn(
+              "text-gray-500 p-1 rounded-full transition-colors cursor-pointer",
+              copied ? "text-green-500 bg-green-50" : "hover:text-blue-600 hover:bg-blue-50"
+            )}
+            title="Copy sound ID to clipboard"
+          >
+            {copied ? (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path
+                  fillRule="evenodd"
+                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
+                <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
+              </svg>
+            )}
+          </button>
+          <button
+            onClick={downloadSound}
+            disabled={downloading}
+            className={cn(
+              "text-gray-500 p-1 rounded-full transition-colors cursor-pointer",
+              downloading ? "text-blue-500 bg-blue-50" : "hover:text-blue-600 hover:bg-blue-50"
+            )}
+            title="Download sound"
+          >
+            {downloading ? (
+              <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path
+                  fillRule="evenodd"
+                  d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );
