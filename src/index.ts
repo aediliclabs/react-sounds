@@ -1,5 +1,6 @@
 // Export core functionality
 export {
+  fetchSoundBlob,
   getCDNUrl,
   isSoundEnabled,
   makeRemoteSound,

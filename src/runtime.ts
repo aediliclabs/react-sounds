@@ -81,7 +81,7 @@ export function freeSound(name: SoundName) {
 /**
  * Fetches sound data as a blob, from local filesystem or CDN
  */
-async function fetchSoundBlob(name: SoundName): Promise<Blob> {
+export async function fetchSoundBlob(name: SoundName): Promise<Blob> {
   try {
     // Try to fetch from local first
     const localPath = await getLocalSoundPath(name);
