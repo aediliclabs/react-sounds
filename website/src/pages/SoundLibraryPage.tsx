@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { LibrarySoundName, useSound } from "react-sounds";
+import { fetchSoundBlob, LibrarySoundName, useSound } from "react-sounds";
 import manifest from "../manifest.json";
 import { cn } from "../utils/cn";
 
@@ -82,8 +82,7 @@ const SoundItem: React.FC<SoundItemProps> = ({ soundKey, metadata }) => {
       setDownloading(true);
 
       // Create a URL to the sound
-      const response = await fetch(`/sounds/${soundKey}.mp3`);
-      const blob = await response.blob();
+      const blob = await fetchSoundBlob(soundKey);
       const url = window.URL.createObjectURL(blob);
 
       // Create a temporary anchor element to trigger download
